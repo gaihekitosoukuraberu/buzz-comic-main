@@ -11,8 +11,12 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   console.log("Seeding database...");
 
-  // Admin user
-  const adminPassword = await bcrypt.hash("admin1234", 12);
+  // Admin user — password from env (ADMIN_INIT_PASSWORD), forced change on first login
+  const rawAdminPw = process.env.ADMIN_INIT_PASSWORD;
+  if (!rawAdminPw) {
+    throw new Error("ADMIN_INIT_PASSWORD env var is required for seeding");
+  }
+  const adminPassword = await bcrypt.hash(rawAdminPw, 12);
   const admin = await prisma.user.upsert({
     where: { email: "admin@buzz-comic.com" },
     update: {},
@@ -21,6 +25,7 @@ async function main() {
       name: "管理者",
       password: adminPassword,
       role: "admin",
+      mustChangePassword: true,
     },
   });
   console.log(`Admin user created: ${admin.email}`);

@@ -11,6 +11,12 @@ export async function middleware(req: NextRequest) {
 
   const isLoggedIn = !!token;
   const userRole = (token as { role?: string } | null)?.role;
+  const mustChangePassword = (token as { mustChangePassword?: boolean } | null)?.mustChangePassword;
+
+  // Force password change before anything else
+  if (isLoggedIn && mustChangePassword && pathname !== "/change-password" && !pathname.startsWith("/api/auth") && !pathname.startsWith("/api/user/change-password")) {
+    return NextResponse.redirect(new URL("/change-password", req.url));
+  }
 
   if (
     pathname.startsWith("/admin") ||

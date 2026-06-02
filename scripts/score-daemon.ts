@@ -15,7 +15,7 @@
  *   pm2 start npm --name score-daemon -- run score:daemon
  */
 
-import { PrismaClient } from "../src/generated/prisma/client";
+import { PrismaClient } from "@prisma/client";
 import { updateAllScores, cullLowScoreMangas } from "../src/lib/scorer";
 
 // ---------------------------------------------------------------------------

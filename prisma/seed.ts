@@ -1,17 +1,11 @@
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import { PrismaClient } from "../src/generated/prisma/client";
+import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
-// DATABASE_URL from env, e.g. "file:./dev.db"
-const databaseUrl = process.env.DATABASE_URL ?? "file:./dev.db";
-
-const adapter = new PrismaBetterSqlite3({ url: databaseUrl });
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient();
 
 async function main() {
   console.log("Seeding database...");
 
-  // Admin user — password from env (ADMIN_INIT_PASSWORD), forced change on first login
   const rawAdminPw = process.env.ADMIN_INIT_PASSWORD;
   if (!rawAdminPw) {
     throw new Error("ADMIN_INIT_PASSWORD env var is required for seeding");
@@ -30,7 +24,6 @@ async function main() {
   });
   console.log(`Admin user created: ${admin.email}`);
 
-  // Site config defaults
   const configs: { key: string; value: string }[] = [
     { key: "site_name", value: "Buzz Comic" },
     { key: "site_description", value: "AI漫画投稿プラットフォーム" },

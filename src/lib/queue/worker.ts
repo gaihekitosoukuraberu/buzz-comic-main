@@ -8,7 +8,7 @@
  * Must NOT be imported inside Next.js edge/browser contexts.
  */
 
-import { PrismaClient } from "@/generated/prisma/client";
+import { PrismaClient } from "@prisma/client";
 import { updateAllScores } from "@/lib/scorer";
 
 // ---------------------------------------------------------------------------

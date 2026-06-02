@@ -30,6 +30,11 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
+
+  // Limit build workers to avoid thread exhaustion on shared hosting (Xserver)
+  experimental: {
+    cpus: 2,
+  },
 };
 
 export default nextConfig;

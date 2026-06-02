@@ -1,0 +1,213 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  password     String?
+  role         String   @default("user") // user, creator, admin
+  avatarUrl    String?
+  bio          String?
+  totalRevenue Float    @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  mangas        Manga[]
+  reviews       Review[]
+  sessions      Session[]
+  accounts      Account[]
+  snsPosts      SnsPost[]
+  mangaLikes    MangaLike[]
+  mangaComments MangaComment[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Manga {
+  id            String    @id @default(cuid())
+  title         String
+  description   String?
+  authorId      String
+  status        String    @default("draft") // draft, pending, approved, rejected, published, culled
+  genre         String?   @default("general") // action, romance, comedy, horror, sf, general
+  tags          String? // JSON array as string
+  coverImageUrl String?
+  totalViews    Int       @default(0)
+  totalLikes    Int       @default(0)
+  totalShares   Int       @default(0)
+  score         Float     @default(0)
+  revenueTotal  Float     @default(0)
+  isAiGenerated Boolean   @default(true)
+  aiPrompt      String?
+  generationId  String?
+  publishedAt   DateTime?
+  culledAt      DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  author   User           @relation(fields: [authorId], references: [id])
+  panels   Panel[]
+  reviews  Review[]
+  scores   Score[]
+  revenues Revenue[]
+  snsPosts SnsPost[]
+  jobs     Job[]
+  likes    MangaLike[]
+  comments MangaComment[]
+}
+
+model Panel {
+  id        String   @id @default(cuid())
+  mangaId   String
+  order     Int
+  imageUrl  String
+  width     Int?
+  height    Int?
+  prompt    String?
+  altText   String?
+  createdAt DateTime @default(now())
+
+  manga Manga @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  mangaId    String
+  reviewerId String
+  decision   String // approved, rejected, pending
+  reason     String?
+  createdAt  DateTime @default(now())
+
+  manga    Manga @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+  reviewer User  @relation(fields: [reviewerId], references: [id])
+}
+
+model Score {
+  id           String   @id @default(cuid())
+  mangaId      String
+  value        Float
+  views        Int      @default(0)
+  likes        Int      @default(0)
+  shares       Int      @default(0)
+  comments     Int      @default(0)
+  calculatedAt DateTime @default(now())
+
+  manga Manga @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+}
+
+model Revenue {
+  id          String   @id @default(cuid())
+  mangaId     String
+  amount      Float
+  type        String // ad_view, tip, subscription_share
+  description String?
+  recordedAt  DateTime @default(now())
+
+  manga Manga @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+}
+
+model Job {
+  id          String    @id @default(cuid())
+  type        String // flux_generate, video_generate, sns_post, score_calc, sheets_sync
+  status      String    @default("pending") // pending, running, done, failed
+  mangaId     String?
+  payload     String? // JSON
+  result      String? // JSON
+  error       String?
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(3)
+  runAt       DateTime  @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  manga Manga? @relation(fields: [mangaId], references: [id])
+}
+
+model SnsPost {
+  id          String    @id @default(cuid())
+  mangaId     String
+  userId      String
+  platform    String // twitter, instagram, tiktok
+  status      String    @default("pending") // pending, posted, failed
+  videoUrl    String?
+  postUrl     String?
+  error       String?
+  scheduledAt DateTime?
+  postedAt    DateTime?
+  createdAt   DateTime  @default(now())
+
+  manga Manga @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id])
+}
+
+model SiteConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model MangaLike {
+  id        String   @id @default(cuid())
+  mangaId   String
+  userId    String
+  createdAt DateTime @default(now())
+
+  manga Manga @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([mangaId, userId])
+}
+
+model MangaComment {
+  id        String   @id @default(cuid())
+  mangaId   String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  manga Manga @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

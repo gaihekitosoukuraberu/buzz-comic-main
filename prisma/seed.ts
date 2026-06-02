@@ -1,0 +1,58 @@
+import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaClient } from "../src/generated/prisma/client";
+import bcrypt from "bcryptjs";
+
+// DATABASE_URL from env, e.g. "file:./dev.db"
+const databaseUrl = process.env.DATABASE_URL ?? "file:./dev.db";
+
+const adapter = new PrismaBetterSqlite3({ url: databaseUrl });
+const prisma = new PrismaClient({ adapter });
+
+async function main() {
+  console.log("Seeding database...");
+
+  // Admin user
+  const adminPassword = await bcrypt.hash("admin1234", 12);
+  const admin = await prisma.user.upsert({
+    where: { email: "admin@buzz-comic.com" },
+    update: {},
+    create: {
+      email: "admin@buzz-comic.com",
+      name: "管理者",
+      password: adminPassword,
+      role: "admin",
+    },
+  });
+  console.log(`Admin user created: ${admin.email}`);
+
+  // Site config defaults
+  const configs: { key: string; value: string }[] = [
+    { key: "site_name", value: "Buzz Comic" },
+    { key: "site_description", value: "AI漫画投稿プラットフォーム" },
+    { key: "score_cull_threshold", value: "10" },
+    { key: "score_cull_days", value: "30" },
+    { key: "max_panels_per_manga", value: "20" },
+    { key: "auto_publish", value: "false" },
+    { key: "maintenance_mode", value: "false" },
+  ];
+
+  for (const config of configs) {
+    await prisma.siteConfig.upsert({
+      where: { key: config.key },
+      update: {},
+      create: config,
+    });
+    console.log(`SiteConfig set: ${config.key} = ${config.value}`);
+  }
+
+  console.log("Seeding complete.");
+}
+
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

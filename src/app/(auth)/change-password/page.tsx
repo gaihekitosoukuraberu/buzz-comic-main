@@ -29,8 +29,16 @@ export default function ChangePasswordPage() {
     });
     setLoading(false);
     if (res.ok) {
-      router.push("/dashboard");
-      router.refresh();
+      // JWT still carries mustChangePassword:true — must sign out to get a fresh token.
+      // POST to NextAuth signout (requires CSRF token), then redirect to login.
+      const { csrfToken } = await fetch("/api/auth/csrf").then((r) => r.json());
+      await fetch("/api/auth/signout", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ csrfToken }),
+        redirect: "manual",
+      });
+      window.location.href = "/login?passwordChanged=1";
     } else {
       const data = await res.json();
       setError(data.error ?? "エラーが発生しました");

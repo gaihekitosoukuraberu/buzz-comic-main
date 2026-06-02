@@ -3,12 +3,13 @@
 import { Suspense, useState, FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Mail, Lock, LogIn, Loader2, AlertCircle } from "lucide-react";
+import { Mail, Lock, LogIn, Loader2, AlertCircle, CheckCircle } from "lucide-react";
 
 function LoginForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
   const authError = searchParams.get("error");
+  const passwordChanged = searchParams.get("passwordChanged") === "1";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -64,6 +65,14 @@ function LoginForm() {
               アカウントにサインイン
             </p>
           </div>
+
+          {/* Success Alert */}
+          {passwordChanged && !error && (
+            <div className="mb-6 flex items-center gap-3 rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
+              <CheckCircle className="h-4 w-4 shrink-0" />
+              <span>パスワードを変更しました。新しいパスワードでログインしてください。</span>
+            </div>
+          )}
 
           {/* Error Alert */}
           {error && (

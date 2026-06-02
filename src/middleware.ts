@@ -1,40 +1,43 @@
-import { auth } from "@/auth";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 
-export default auth((req) => {
-  const { nextUrl } = req;
-  const session = req.auth;
-  const isLoggedIn = !!session?.user;
-  const userRole = (session?.user as { role?: string } | undefined)?.role;
+export async function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
 
-  // Admin routes: require admin role
+  const token = await getToken({
+    req,
+    secret: process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET,
+  });
+
+  const isLoggedIn = !!token;
+  const userRole = (token as { role?: string } | null)?.role;
+
   if (
-    nextUrl.pathname.startsWith("/admin") ||
-    nextUrl.pathname.startsWith("/api/admin")
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/api/admin")
   ) {
     if (!isLoggedIn) {
-      const loginUrl = new URL("/login", nextUrl.origin);
-      loginUrl.searchParams.set("callbackUrl", nextUrl.pathname);
+      const loginUrl = new URL("/login", req.url);
+      loginUrl.searchParams.set("callbackUrl", pathname);
       return NextResponse.redirect(loginUrl);
     }
     if (userRole !== "admin") {
-      return NextResponse.redirect(new URL("/", nextUrl.origin));
+      return NextResponse.redirect(new URL("/", req.url));
     }
     return NextResponse.next();
   }
 
-  // Dashboard routes: require authentication
-  if (nextUrl.pathname.startsWith("/dashboard")) {
+  if (pathname.startsWith("/dashboard")) {
     if (!isLoggedIn) {
-      const loginUrl = new URL("/login", nextUrl.origin);
-      loginUrl.searchParams.set("callbackUrl", nextUrl.pathname);
+      const loginUrl = new URL("/login", req.url);
+      loginUrl.searchParams.set("callbackUrl", pathname);
       return NextResponse.redirect(loginUrl);
     }
     return NextResponse.next();
   }
 
   return NextResponse.next();
-});
+}
 
 export const config = {
   matcher: [

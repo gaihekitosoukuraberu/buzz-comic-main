@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useState, FormEvent } from "react";
-import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Mail, Lock, LogIn, Loader2, AlertCircle } from "lucide-react";
@@ -9,7 +8,6 @@ import { Mail, Lock, LogIn, Loader2, AlertCircle } from "lucide-react";
 function LoginForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
-  // NextAuth sets ?error=CredentialsSignin on failed login redirect
   const authError = searchParams.get("error");
 
   const [email, setEmail] = useState("");
@@ -24,18 +22,33 @@ function LoginForm() {
     setError(null);
     setIsLoading(true);
 
-    // Use redirect: true so NextAuth handles the full page redirect.
-    // redirect: false causes JSON parse errors through PHP reverse proxies
-    // because fetch() receives an opaque redirect response.
-    await signIn("credentials", {
-      email,
-      password,
-      redirectTo: callbackUrl,
-    });
+    try {
+      // Bypass signIn() from next-auth/react — it internally does fetch+JSON parse
+      // which breaks through PHP reverse proxies (opaque redirect → HTML → SyntaxError).
+      // Instead: POST credentials manually with redirect:'manual', then check session.
+      const { csrfToken } = await fetch("/api/auth/csrf").then((r) => r.json());
 
-    // If we reach here, signIn() returned without redirecting (only happens on error).
-    setError("メールアドレスまたはパスワードが正しくありません");
-    setIsLoading(false);
+      await fetch("/api/auth/callback/credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ csrfToken, email, password, redirect: "false" }),
+        redirect: "manual", // receive opaque redirect without following it
+      });
+
+      // Cookie is set by the 302 response even when not followed.
+      // Check session to see if authentication succeeded.
+      const session = await fetch("/api/auth/session").then((r) => r.json());
+
+      if (session?.user) {
+        window.location.href = callbackUrl;
+      } else {
+        setError("メールアドレスまたはパスワードが正しくありません");
+        setIsLoading(false);
+      }
+    } catch {
+      setError("ログイン中にエラーが発生しました");
+      setIsLoading(false);
+    }
   };
 
   return (

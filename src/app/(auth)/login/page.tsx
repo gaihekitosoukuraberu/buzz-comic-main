@@ -2,18 +2,21 @@
 
 import { Suspense, useState, FormEvent } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Mail, Lock, LogIn, Loader2, AlertCircle } from "lucide-react";
 
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
+  // NextAuth sets ?error=CredentialsSignin on failed login redirect
+  const authError = searchParams.get("error");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    authError ? "メールアドレスまたはパスワードが正しくありません" : null
+  );
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -21,25 +24,18 @@ function LoginForm() {
     setError(null);
     setIsLoading(true);
 
-    try {
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      });
+    // Use redirect: true so NextAuth handles the full page redirect.
+    // redirect: false causes JSON parse errors through PHP reverse proxies
+    // because fetch() receives an opaque redirect response.
+    await signIn("credentials", {
+      email,
+      password,
+      redirectTo: callbackUrl,
+    });
 
-      if (result?.error) {
-        setError("メールアドレスまたはパスワードが正しくありません");
-        return;
-      }
-
-      router.push(callbackUrl);
-      router.refresh();
-    } catch {
-      setError("ログイン中にエラーが発生しました");
-    } finally {
-      setIsLoading(false);
-    }
+    // If we reach here, signIn() returned without redirecting (only happens on error).
+    setError("メールアドレスまたはパスワードが正しくありません");
+    setIsLoading(false);
   };
 
   return (
